@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Post = require("../models/Post");
 const { check, validationResult } = require("express-validator");
+const authMiddleware = require("../middleware/authMiddleware"); // Middleware to verify JWT token
 
 // ✅ Fetch All Posts (Latest First)
 router.get("/", async (req, res) => {
@@ -14,11 +15,11 @@ router.get("/", async (req, res) => {
     }
 });
 
-// ✅ Create a New Post (With Validation)
+// ✅ Create a New Post (User must be authenticated)
 router.post(
     "/",
+    authMiddleware, // Ensures only logged-in users can create posts
     [
-        check("userId", "User ID is required").not().isEmpty(),
         check("content", "Post content cannot be empty").not().isEmpty(),
     ],
     async (req, res) => {
@@ -28,7 +29,10 @@ router.post(
         }
 
         try {
-            const { userId, content, name, profilePic } = req.body;
+            const { content } = req.body;
+            const userId = req.user.userId; // Extract user ID from JWT token
+            const name = req.user.name;
+            const profilePic = req.user.profilePic || "default-avatar.png";
 
             const newPost = new Post({ userId, content, name, profilePic });
             await newPost.save();

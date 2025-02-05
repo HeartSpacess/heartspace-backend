@@ -12,6 +12,7 @@ const validateUser = [
     check("password", "Password must be at least 6 characters").isLength({ min: 6 }),
 ];
 
+// ✅ Signup Route
 router.post("/signup", validateUser, async (req, res) => {
     try {
         const errors = validationResult(req);
@@ -35,7 +36,15 @@ router.post("/signup", validateUser, async (req, res) => {
         user = new User({ name, email, password: hashedPassword, location });
         await user.save();
 
-        res.status(201).json({ success: true, message: "User registered successfully" });
+        // Generate JWT Token for automatic login
+        const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, { expiresIn: "1h" });
+
+        res.status(201).json({
+            success: true,
+            message: "User registered successfully",
+            token,
+            user: { id: user._id, name: user.name, email: user.email, location: user.location },
+        });
     } catch (error) {
         console.error("Signup Error:", error.message);
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
@@ -78,7 +87,7 @@ router.post(
                 message: "Login successful",
                 token,
                 expiresIn: 3600, // 1 hour in seconds
-                user: { name: user.name, email: user.email, location: user.location },
+                user: { id: user._id, name: user.name, email: user.email, location: user.location },
             });
         } catch (error) {
             console.error("Login Error:", error.message);
@@ -87,13 +96,27 @@ router.post(
     }
 );
 
-// ✅ Get All Users Route
+// ✅ Get All Users Route (To Show in Friends List)
 router.get("/users", async (req, res) => {
     try {
         const users = await User.find().select("-password"); // Exclude passwords
         res.json({ success: true, users });
     } catch (error) {
         console.error("Get Users Error:", error.message);
+        res.status(500).json({ success: false, message: "Server Error", error: error.message });
+    }
+});
+
+// ✅ Get Specific User Profile by ID (For Profile Page)
+router.get("/profile/:id", async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id).select("-password"); // Exclude password
+        if (!user) {
+            return res.status(404).json({ success: false, message: "User not found" });
+        }
+        res.json({ success: true, user });
+    } catch (error) {
+        console.error("Get Profile Error:", error.message);
         res.status(500).json({ success: false, message: "Server Error", error: error.message });
     }
 });

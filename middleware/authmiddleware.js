@@ -20,6 +20,7 @@ module.exports = (req, res, next) => {
         req.user = decoded; // Stores user data in request
         next(); // Move to the next middleware
     } catch (error) {
-        res.status(401).json({ success: false, message: "Invalid or expired token" });
+        console.error("JWT Verification Error:", error.message);
+        return res.status(401).json({ success: false, message: "Invalid or expired token" });
     }
 };

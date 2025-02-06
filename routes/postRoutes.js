@@ -19,9 +19,7 @@ router.get("/", async (req, res) => {
 router.post(
     "/",
     authMiddleware, // Ensures only logged-in users can create posts
-    [
-        check("content", "Post content cannot be empty").not().isEmpty(),
-    ],
+    [check("content", "Post content cannot be empty").not().isEmpty()],
     async (req, res) => {
         const errors = validationResult(req);
         if (!errors.isEmpty()) {
@@ -32,7 +30,7 @@ router.post(
             const { content } = req.body;
             const user = req.user; // Extract user data from JWT token
 
-            if (!user) {
+            if (!user || !user.userId) {
                 return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
             }
 

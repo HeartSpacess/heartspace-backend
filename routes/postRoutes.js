@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 const Post = require("../models/Post");
 const { check, validationResult } = require("express-validator");
-const authMiddleware = require("../middleware/authMiddleware"); // Middleware to verify JWT token
+const authMiddleware = require("../middleware/authMiddleware"); // Middleware for JWT authentication
 
 // ✅ Fetch All Posts (Latest First)
 router.get("/", async (req, res) => {
@@ -30,11 +30,19 @@ router.post(
 
         try {
             const { content } = req.body;
-            const userId = req.user.userId; // Extract user ID from JWT token
-            const name = req.user.name;
-            const profilePic = req.user.profilePic || "default-avatar.png";
+            const user = req.user; // Extract user data from JWT token
 
-            const newPost = new Post({ userId, content, name, profilePic });
+            if (!user) {
+                return res.status(401).json({ success: false, message: "Unauthorized. Please log in." });
+            }
+
+            const newPost = new Post({
+                userId: user.userId,
+                name: user.name || "Anonymous",
+                profilePic: user.profilePic || "default-avatar.png",
+                content,
+            });
+
             await newPost.save();
 
             res.status(201).json({ success: true, message: "Post created successfully", post: newPost });
@@ -49,6 +57,11 @@ router.post(
 router.get("/:userId", async (req, res) => {
     try {
         const posts = await Post.find({ userId: req.params.userId }).sort({ createdAt: -1 });
+
+        if (!posts.length) {
+            return res.status(404).json({ success: false, message: "No posts found for this user." });
+        }
+
         res.json({ success: true, posts });
     } catch (error) {
         console.error("Error fetching user posts:", error.message);
